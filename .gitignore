@@ -1,0 +1,80 @@
+# Python-specific ignores        
+*.py[cod]                
+*$py.class
+__pycache__/
+*.pyc                   
+*.egg-info/             
+dist/                   
+build/                   
+*.egg                     
+.pytest_cache/           
+.coverage                
+*.coverage               
+coverage.xml             
+*.log                     
+*.bak                    
+
+# Virtual environment
+venv/                    
+env/
+.venv/
+ENV/
+.env
+
+# Dependency lock files (optional, include if you want to version them)
+# requirements.txt         # Uncomment to ignore, but typically versioned
+# Pipfile.lock            # Uncomment if using Pipenv and not versioning lock file
+
+# IDE and editor files
+.vscode/                
+.idea/                    
+*.sublime-*              
+*.code-workspace          
+
+# Operating system files
+.DS_Store                
+Thumbs.db                 
+desktop.ini              
+
+# OCR and image processing
+*.pdf                    
+*.jpg                   
+*.png                   
+tessdata/                
+poppler/                  
+tesseract/               
+
+# Pinecone and vector store
+pinecone_data/           
+*.pkl                    
+*.npy                   
+
+# Environment variables and secrets
+.env                      
+*.env                   
+secrets.json             
+*.key                    
+credentials.json 
+
+# Temporary files
+*.tmp                     
+*.temp                   
+*.swp                     
+*~                       
+
+# Testing and debugging
+*.prof                 
+*.dump                    
+*.crash                  
+
+# Documentation and build artifacts
+docs/_build/             
+*.md.bak                 
+*.ipynb_checkpoints/     
+
+# Miscellaneous
+*.bak                    
+*.cache                   
+*.bak.*                  
+*.zip                    
+*.tar.gz                 

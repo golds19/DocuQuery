@@ -1,0 +1,12 @@
+pytesseract
+Pillow
+PyMuPDF
+langchain-openai
+langchain-community
+langchain_pinecone
+langchain
+openai
+python-dotenv
+ipykernel
+pdf2image
+pinecone
