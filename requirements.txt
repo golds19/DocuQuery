@@ -10,3 +10,4 @@ python-dotenv
 ipykernel
 pdf2image
 pinecone
+streamlit

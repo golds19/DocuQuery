@@ -77,4 +77,6 @@ docs/_build/
 *.cache                   
 *.bak.*                  
 *.zip                    
-*.tar.gz                 
+*.tar.gz
+
+# folders

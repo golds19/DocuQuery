@@ -13,7 +13,7 @@ from langchain.chains.retrieval import create_retrieval_chain
 from langchain import hub
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_openai import ChatOpenAI
-from ingestion import PdfExtractors
+from src.ingestion import PdfExtractors
 
 # Load environment variables (e.g., PINECONE_API_KEY, OPENAI_API_KEY)
 load_dotenv()
@@ -27,6 +27,41 @@ embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
 # Pinecone index name
 INDEX_NAME = "ocr-rag"
+
+def upload_files(files, upload_dir="uploaded_files"):
+    """
+    Process files - handles both file paths and Streamlit uploads
+    """
+    pdf_paths = []
+    image_paths = []
+    
+    for file_item in files:
+        try:
+            if isinstance(file_item, str):
+                # It's a file path
+                file_path = file_item
+                file_ext = os.path.splitext(file_item)[1].lower()
+            else:
+                # It's a Streamlit UploadedFile
+                os.makedirs(upload_dir, exist_ok=True)
+                file_path = os.path.join(upload_dir, file_item.name)
+                file_ext = os.path.splitext(file_item.name)[1].lower()
+                
+                # Save the uploaded file
+                with open(file_path, 'wb') as f:
+                    f.write(file_item.getbuffer())
+            
+            # Categorize
+            if file_ext == '.pdf':
+                pdf_paths.append(file_path)
+            elif file_ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.tiff']:
+                image_paths.append(file_path)
+                
+        except Exception as e:
+            print(f"Error processing file: {e}")
+            continue
+    
+    return pdf_paths, image_paths
 
 def categorize_file_paths(file_paths):
     """
@@ -164,7 +199,8 @@ def process_uploaded_files(uploaded_files):
     """
     try:
         # Save uploaded files to temporary paths
-        pdf_paths, image_paths = categorize_file_paths(uploaded_files)
+        #pdf_paths, image_paths = categorize_file_paths(uploaded_files)
+        pdf_paths, image_paths = upload_files(uploaded_files)
         print(pdf_paths)
         print(image_paths)
         
