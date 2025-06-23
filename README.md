@@ -25,7 +25,7 @@ A Python-based application that processes PDFs and images using OCR, stores text
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/golds/ocr-rag.git
+git clone https://github.com/golds19/DocuQuery.git
 cd ocr-rag
 ```
 
