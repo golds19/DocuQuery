@@ -49,8 +49,7 @@ Open the Streamlit app in your browser (default: http://localhost:8501).
 Upload PDFs or images (.pdf, .jpg, .png).
 Click "Process Documents" to extract text and store in Pinecone.
 Enter a query (e.g., "What is the global revenue of artificial intelligence?") to get answers based on uploaded documents.
-
-### Project Folder Architecture
+Project Structure
 ├── src/                # Source code
 │   ├── ingestion.py   # PdfExtractors class for OCR
 │   ├── main.py        # Core logic for document processing, vector storage, and RAG querying
