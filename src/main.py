@@ -14,6 +14,8 @@ from langchain import hub
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_openai import ChatOpenAI
 from src.ingestion import PdfExtractors
+from langchain_ollama.llms import OllamaLLM
+from langchain_ollama.embeddings import OllamaEmbeddings
 
 # Load environment variables (e.g., PINECONE_API_KEY, OPENAI_API_KEY)
 load_dotenv()
@@ -218,24 +220,27 @@ def process_uploaded_files(uploaded_files):
     except Exception as e:
         print(f"Error occured: {e}")
 
-def run_llm_query(query: str):
+def run_llm_query(query: str, model_choice: str):
     """
     Run a query against the Pinecone store using RAG pipeline.
     
     Args:
         query: String query from user.
-        vectorstore: PineconeVectorStore instance for retrieval.
+        model_choice: Selected model type (OpenAI or Llama 3).
     
     Returns:
         Dict: Result from RAG pipeline, including answer.
     """
-    # if not vectorstore:
-    #     return {"answer": "No documents have been processed yet. Please upload documents first."}
-    
-    chat = ChatOpenAI(verbose=True, temperature=0, model="gpt-4o-mini-2024-07-18")
+    if model_choice == "OpenAI":
+        embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+    elif model_choice == "Llama 3":
+        embeddings = OllamaEmbeddings()  # Initialize Llama embeddings
+    else:
+        raise ValueError("Invalid model choice")
+
     docsearch = PineconeVectorStore(index_name=INDEX_NAME, embedding=embeddings)
     retrieval_qa_chat_prompt = hub.pull("langchain-ai/retrieval-qa-chat")
-    stuff_documents_chain = create_stuff_documents_chain(chat, retrieval_qa_chat_prompt)
+    stuff_documents_chain = create_stuff_documents_chain(ChatOpenAI(verbose=True, temperature=0, model="gpt-4o-mini-2024-07-18"), retrieval_qa_chat_prompt)
     
     qa = create_retrieval_chain(
         retriever=docsearch.as_retriever(),
@@ -260,5 +265,5 @@ if __name__ == "__main__":
     # vectorstore = process_uploaded_files(pdf_paths + image_paths)
     
     # Test query
-    result = run_llm_query("What are the AI and digital trends in 2025 from the uploaded documents?")
+    result = run_llm_query("What are the AI and digital trends in 2025 from the uploaded documents?", "OpenAI")
     print(result["answer"])

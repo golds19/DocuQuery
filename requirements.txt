@@ -11,3 +11,4 @@ ipykernel
 pdf2image
 pinecone
 streamlit
+langchain-ollama
