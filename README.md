@@ -11,11 +11,14 @@ A Python-based application that processes PDFs and images using OCR, stores text
 - **Streamlit UI**: User-friendly interface for document uploads and querying
 - **Batch Processing**: Handles large document sets with fallback batch uploads to Pinecone
 
+- **Model Integration**: The application now supports both OpenAI and Llama 3 models for document processing and querying.
+- **Dynamic Indexing**: The index name used for storing documents in Pinecone is now determined based on the selected model.
+
 ## Tech Stack
 
 - **Languages**: Python
 - **OCR**: Tesseract, PyMuPDF, pdf2image
-- **NLP**: LangChain, OpenAI (text-embedding-3-small, GPT-4o-mini)
+- **NLP**: LangChain, OpenAI (text-embedding-3-small, GPT-4o-mini), Llama3:8b (mxbai-embed-large)
 - **Vector DB**: Pinecone
 - **Frontend**: Streamlit
 - **Dependencies**: Pillow, python-dotenv

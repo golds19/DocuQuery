@@ -79,4 +79,5 @@ docs/_build/
 *.zip                    
 *.tar.gz
 
-# folders
+# files
+todo.txt
