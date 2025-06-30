@@ -12,3 +12,6 @@ pdf2image
 pinecone
 streamlit
 langchain-ollama
+# pytest
+# pytest-cov
+# coverage
