@@ -17,8 +17,66 @@ from src.ingestion import PdfExtractors
 from langchain_ollama.llms import OllamaLLM
 from langchain_ollama.embeddings import OllamaEmbeddings
 
-# Load environment variables (e.g., PINECONE_API_KEY, OPENAI_API_KEY)
+# Load environment variables
 load_dotenv()
+
+def validate_vector_store_config():
+    """Validate vector store configuration and provide helpful error messages"""
+    pinecone_key = os.getenv("PINECONE_API_KEY")
+    if not pinecone_key:
+        raise ValueError(
+            "PINECONE_API_KEY not found. Please create a Pinecone account and "
+            "set your API key in the .env file. Visit https://www.pinecone.io to get started."
+        )
+    
+    # Validate OpenAI configuration
+    openai_key = os.getenv("OPENAI_API_KEY")
+    if not openai_key:
+        raise ValueError(
+            "OPENAI_API_KEY not found. Please set your OpenAI API key in the .env file "
+            "if you plan to use OpenAI models."
+        )
+
+def get_index_name(model_choice):
+    """Get user-provided index name or raise helpful error"""
+    index_env_var = f"{model_choice.upper().replace(' ', '_')}_INDEX_NAME"
+    index_name = os.getenv(index_env_var)
+    if not index_name:
+        raise ValueError(
+            f"Please set {index_env_var} in your .env file. "
+            "This should be your own Pinecone index name."
+        )
+    return index_name
+
+# Validate configuration on startup
+validate_vector_store_config()
+
+# Get index names through the new function
+def get_vector_store(model_name: str, namespace: str = None):
+    """
+    Get vector store with proper configuration and namespace
+    
+    Args:
+        model_name: The model choice ("OpenAI" or "Llama 3")
+        namespace: Optional namespace for data isolation
+    
+    Returns:
+        PineconeVectorStore: Configured vector store instance
+    """
+    # Get the appropriate index name
+    index_name = get_index_name(model_name)
+    
+    # Set up embeddings based on model choice
+    embeddings = (OpenAIEmbeddings(model="text-embedding-3-small") 
+                 if model_name == "OpenAI" 
+                 else OllamaEmbeddings(model="mxbai-embed-large"))
+    
+    # Create vector store with optional namespace
+    return PineconeVectorStore(
+        embedding=embeddings,
+        index_name=index_name,
+        namespace=namespace
+    )
 
 # Set Tesseract and Poppler paths (adjust as needed)
 # pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
@@ -149,18 +207,18 @@ def load_and_chunk_pdfs_and_images(pdf_paths, image_paths, chunk_size=500, chunk
 
     return chunked_documents
 
-def documents_storing_in_vectorDB(documents, model_name):     
+def documents_storing_in_vectorDB(documents, model_name, namespace=None):     
     """     
     Store documents in Pinecone vector store, with automatic batch processing for long documents.          
     Args:         
         documents: List of Document objects to store.         
-        index_name: The name of the Pinecone index to store documents in.          
+        model_name: The model choice ("OpenAI" or "Llama 3")
+        namespace: Optional namespace for data isolation
     Returns:         
         PineconeVectorStore: Initialized vector store for querying.     
     """     
-    # Set embeddings     
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-small") if model_name == "OpenAI" else OllamaEmbeddings(model="mxbai-embed-large")
-    index_name = OPENAI_INDEX_NAME if model_name == "OpenAI" else OLLAMA_INDEX_NAME
+    # Get configured vector store
+    vectorstore = get_vector_store(model_name, namespace)
     
     # Analyze document lengths to determine processing method
     total_chars = sum(len(doc.page_content) for doc in documents)
@@ -179,12 +237,6 @@ def documents_storing_in_vectorDB(documents, model_name):
         print(f"Documents are long (total: {total_chars:,} chars, avg: {avg_doc_length:.0f} chars/doc)")
         print("Using batch processing for optimal performance...")
         
-        # Direct batch processing for long documents
-        vectorstore = PineconeVectorStore(
-            embedding=embeddings,
-            index_name=index_name
-        )
-        
         batch_size = 50  # Smaller batches for long documents
         for i in range(0, len(documents), batch_size):
             batch = documents[i:i + batch_size]
@@ -200,22 +252,18 @@ def documents_storing_in_vectorDB(documents, model_name):
         
         # Standard processing for shorter documents
         print(f"Going to add {len(documents)} documents to Pinecone")         
-        vectorstore = PineconeVectorStore.from_documents(             
-            documents,             
-            embeddings,             
-            index_name=index_name         
-        )         
-        print(f"Documents stored successfully in index: {index_name}")         
+        vectorstore.add_documents(documents)
+        print(f"Documents stored successfully in index: {get_index_name(model_name)}")         
         return vectorstore
 
-def process_uploaded_files(uploaded_files, model_choice):
+def process_uploaded_files(uploaded_files, model_choice, namespace=None):
     """
     Process uploaded files, extract text, chunk, and store in Pinecone.
     
     Args:
         uploaded_files: List of file-like objects from UI upload.
         model_choice: Selected model type (OpenAI or Llama 3).
-        index_name: The name of the Pinecone index to store documents in.
+        namespace: Optional namespace for data isolation
     Returns:
         PineconeVectorStore: Vector store for querying, or None if failed.
     """
@@ -229,52 +277,48 @@ def process_uploaded_files(uploaded_files, model_choice):
         documents = load_and_chunk_pdfs_and_images(pdf_paths, image_paths)
         print(documents)
         
-        # Create embeddings based on selected model
-        if model_choice == "OpenAI":
-            embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
-        elif model_choice == "Llama 3":
-            embeddings = OllamaEmbeddings(model="llama3")
-        else:
-            raise ValueError("Invalid model choice")
-        
-        # Store in Pinecone
+        # Store in Pinecone with namespace if provided
         if documents:
-            vectorstore = documents_storing_in_vectorDB(documents, model_name=model_choice)
+            vectorstore = documents_storing_in_vectorDB(
+                documents, 
+                model_name=model_choice,
+                namespace=namespace
+            )
             return vectorstore
         else:
             print("No valid documents extracted")
             return None
     except Exception as e:
         print(f"Error occurred: {e}")
+        raise
 
-def run_llm_query(query: str, model_choice: str):
+def run_llm_query(query: str, model_choice: str, namespace: str = None):
     """
     Run a query against the Pinecone store using RAG pipeline.
     
     Args:
         query: String query from user.
         model_choice: Selected model type (OpenAI or Llama 3).
+        namespace: Optional namespace for data isolation
     
     Returns:
         Dict: Result from RAG pipeline, including answer.
     """
     
-    # Create embeddings based on selected model
     try:
-        if model_choice == "OpenAI":
-                embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
-                retrieval_qa_chat_prompt = hub.pull("langchain-ai/retrieval-qa-chat")  # Adjust prompt for OpenAI
-        elif model_choice == "Llama 3":
-                embeddings = OllamaEmbeddings(model="mxbai-embed-large")  # Initialize Llama embeddings
-                retrieval_qa_chat_prompt = hub.pull("langchain-ai/retrieval-qa-chat")  # Adjust prompt for Llama 3
-        else:
-                raise ValueError("Invalid model choice")
+        # Get configured vector store with namespace
+        docsearch = get_vector_store(model_choice, namespace)
         
-        # Initialize the vector store
-        docsearch = PineconeVectorStore(index_name=OPENAI_INDEX_NAME if model_choice == "OpenAI" else OLLAMA_INDEX_NAME, embedding=embeddings)
+        # Set up the retrieval chain
+        retrieval_qa_chat_prompt = hub.pull("langchain-ai/retrieval-qa-chat")
         
         # Create the stuff documents chain
-        stuff_documents_chain = create_stuff_documents_chain(ChatOpenAI(verbose=True, temperature=0, model="gpt-4o-mini-2024-07-18") if model_choice == "OpenAI" else OllamaLLM(model="llama3:8b"), retrieval_qa_chat_prompt)
+        stuff_documents_chain = create_stuff_documents_chain(
+            ChatOpenAI(verbose=True, temperature=0, model="gpt-4o-mini-2024-07-18") 
+            if model_choice == "OpenAI" 
+            else OllamaLLM(model="llama3:8b"), 
+            retrieval_qa_chat_prompt
+        )
         
         # Create the QA chain
         qa = create_retrieval_chain(
@@ -287,6 +331,7 @@ def run_llm_query(query: str, model_choice: str):
         return result
     except Exception as e:
         print(f"Error occurred: {e}")
+        raise
 
 # Example usage (for testing without UI)
 if __name__ == "__main__":
